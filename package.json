@@ -1,0 +1,35 @@
+{
+  "name": "epub-drm-check",
+  "version": "1.0.0",
+  "description": "A CLI tool to detect DRM-protected EPUB files in directories",
+  "main": "src/index.js",
+  "bin": {
+    "epub-drm-check": "./src/index.js"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "examples": "node examples.js",
+    "benchmark": "node benchmark.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "epub",
+    "drm",
+    "cli",
+    "ebook",
+    "scanner"
+  ],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "dependencies": {
+    "adm-zip": "^0.5.16",
+    "chalk": "^4.1.2",
+    "cli-progress": "^3.12.0",
+    "commander": "^11.0.0",
+    "p-limit": "^3.1.0",
+    "yauzl": "^3.0.0"
+  }
+}
