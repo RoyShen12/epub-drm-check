@@ -246,8 +246,11 @@ class DRMDetector {
       details: {}
     };
 
-    // Check DRM flags and offsets
-    if (mobiInfo.drmOffset && mobiInfo.drmOffset !== 0xFFFFFFFF) {
+    // Check DRM offset - only consider it DRM if it's a valid, non-zero, non-default value
+    if (mobiInfo.drmOffset &&
+        mobiInfo.drmOffset !== 0 &&
+        mobiInfo.drmOffset !== 0xFFFFFFFF &&
+        mobiInfo.drmCount > 0) {
       result.isDRMProtected = true;
       result.drmType = 'Amazon DRM (DRM offset present)';
       result.details.drmOffset = mobiInfo.drmOffset;
@@ -256,19 +259,30 @@ class DRMDetector {
       return result;
     }
 
-    if (mobiInfo.drmFlags && mobiInfo.drmFlags !== 0) {
+    // Check DRM flags - only specific flag patterns indicate DRM
+    if (mobiInfo.drmFlags && (mobiInfo.drmFlags & 0x01) !== 0) {
       result.isDRMProtected = true;
       result.drmType = 'Amazon DRM (DRM flags set)';
       result.details.drmFlags = mobiInfo.drmFlags;
       return result;
     }
 
-    // Check for encryption in record count pattern
-    if (mobiInfo.numRecords > 1) {
-      // If there are many records but no clear content structure,
-      // it might indicate encryption (this is a heuristic)
-      result.details.numRecords = mobiInfo.numRecords;
+    // Additional check: if DRM size is suspiciously large, it might indicate DRM
+    if (mobiInfo.drmSize > 0 && mobiInfo.drmSize < 0xFFFFFFFF) {
+      // Only flag as DRM if size is reasonable but present
+      if (mobiInfo.drmSize > 32 && mobiInfo.drmSize < 10000) {
+        result.isDRMProtected = true;
+        result.drmType = 'Amazon DRM (DRM size present)';
+        result.details.drmSize = mobiInfo.drmSize;
+        return result;
+      }
     }
+
+    // Store info for debugging but don't flag as DRM
+    result.details.numRecords = mobiInfo.numRecords;
+    result.details.drmOffset = mobiInfo.drmOffset;
+    result.details.drmFlags = mobiInfo.drmFlags;
+    result.details.drmSize = mobiInfo.drmSize;
 
     return result;
   }
@@ -280,14 +294,13 @@ class DRMDetector {
       details: {}
     };
 
-    // Known EXTH record types that indicate DRM
-    const drmRecordTypes = {
+    // Known EXTH record types that may indicate DRM, but we need to check content
+    const potentialDrmRecordTypes = {
       401: 'DRM Server ID',
       402: 'DRM Commerce ID',
       403: 'DRM eBookie ID',
       404: 'DRM User ID',
       405: 'DRM PID',
-      406: 'DRM User Name',
       407: 'DRM Server Token',
       501: 'Personal DRM Key'
     };
@@ -297,20 +310,38 @@ class DRMDetector {
     for (const [recordType, recordData] of Object.entries(records)) {
       const type = parseInt(recordType);
 
-      if (drmRecordTypes[type]) {
-        foundDRMRecords.push({
-          type: type,
-          name: drmRecordTypes[type],
-          size: recordData.length
-        });
-      }
+      if (potentialDrmRecordTypes[type]) {
+        // Check if the record actually contains DRM data
+        const content = recordData.toString('utf8');
 
-      // Check for Amazon-specific DRM indicators
-      if (type >= 400 && type <= 450) {
+        // Skip if empty or contains only common non-DRM values
+        if (content.length === 0 ||
+            content === 'd' ||
+            content === 'EBOK' ||
+            content.trim() === '') {
+          continue;
+        }
+
+        // Skip if content is all null bytes (common padding)
+        if (recordData.every(byte => byte === 0)) {
+          continue;
+        }
+
+        // For type 501, check if it's actually a DRM key vs just book type
+        if (type === 501 && (content === 'EBOK' || content === 'PDOC' || content.length < 10)) {
+          continue;
+        }
+
+        // For DRM Server/User IDs, they should be meaningful strings (not just padding)
+        if ((type >= 401 && type <= 407) && (content.length < 8 || recordData.every(byte => byte === 0 || byte < 32))) {
+          continue;
+        }
+
         foundDRMRecords.push({
           type: type,
-          name: 'Amazon DRM Record',
-          size: recordData.length
+          name: potentialDrmRecordTypes[type],
+          size: recordData.length,
+          content: content.substring(0, 50) // Store first 50 chars for debugging
         });
       }
     }

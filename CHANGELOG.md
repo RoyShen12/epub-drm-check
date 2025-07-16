@@ -1,5 +1,26 @@
 # 更新日志 (CHANGELOG)
 
+## v1.2.1 - 2025-07-16
+
+### 🐛 **Bug Fixes**
+- **False Positive Fix**: Fixed MOBI/AZW3 DRM detection false positives that incorrectly flagged legitimate eBooks as DRM-protected
+- **EXTH Record Analysis**: Improved EXTH record content analysis to distinguish between actual DRM data and normal metadata
+- **Null Byte Handling**: Added detection for null-byte padding in DRM fields to avoid false positives
+- **Empty Field Filtering**: Enhanced filtering of empty or placeholder DRM record fields
+
+### 🔍 **Detection Improvements**
+- **Content-Based Validation**: Now validates EXTH record content, not just record type presence
+- **Padding Detection**: Skips records filled with null bytes or control characters
+- **Threshold Validation**: Improved validation thresholds for DRM field content length
+- **Amazon DRM Accuracy**: More accurate detection of actual Amazon DRM vs normal Kindle metadata
+
+### ⚡ **Validation**
+- **Real Book Testing**: Verified with actual MOBI/AZW3 files to ensure no false positives
+- **Test Suite**: All existing tests continue to pass
+- **Regression Prevention**: Added logic to prevent similar false positives in the future
+
+---
+
 ## v1.2.0 - 2025-07-16
 
 ### 🧪 **测试与质量保证**

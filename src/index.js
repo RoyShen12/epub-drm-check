@@ -12,7 +12,7 @@ const program = new Command();
 program
   .name('epub-drm-check')
   .description('CLI tool to detect DRM-protected EPUB, MOBI, and AZW3 files')
-  .version('1.2.0');
+  .version('1.2.1');
 
 program
   .argument('<directory>', 'Directory to scan for eBook files (EPUB, MOBI, AZW3)')
