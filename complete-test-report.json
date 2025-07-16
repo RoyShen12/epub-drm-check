@@ -1,0 +1,110 @@
+{
+  "scanDate": "2025-07-16T02:39:27.515Z",
+  "summary": {
+    "totalFiles": 7,
+    "drmProtected": 4,
+    "readable": 3,
+    "errors": 0
+  },
+  "files": [
+    {
+      "fileName": "drm-protected.azw3",
+      "filePath": "D:\\WorkRepos\\epub-drm-check\\test-files\\drm-protected.azw3",
+      "fileSize": 1024,
+      "fileSizeFormatted": "1 KB",
+      "isDRMProtected": true,
+      "drmType": "Amazon DRM (DRM offset present)",
+      "details": {
+        "fileFormat": "mobi",
+        "drmOffset": 400,
+        "drmCount": 1,
+        "drmSize": 64
+      },
+      "error": null,
+      "checkTime": "2025-07-16T02:39:27.507Z"
+    },
+    {
+      "fileName": "drm-protected.epub",
+      "filePath": "D:\\WorkRepos\\epub-drm-check\\test-files\\drm-protected.epub",
+      "fileSize": 874,
+      "fileSizeFormatted": "874 B",
+      "isDRMProtected": true,
+      "drmType": "Adobe DRM (encryption.xml found)",
+      "details": {
+        "fileFormat": "epub",
+        "encryptionFile": true
+      },
+      "error": null,
+      "checkTime": "2025-07-16T02:39:27.508Z"
+    },
+    {
+      "fileName": "drm-protected.mobi",
+      "filePath": "D:\\WorkRepos\\epub-drm-check\\test-files\\drm-protected.mobi",
+      "fileSize": 1024,
+      "fileSizeFormatted": "1 KB",
+      "isDRMProtected": true,
+      "drmType": "Amazon DRM (DRM offset present)",
+      "details": {
+        "fileFormat": "mobi",
+        "drmOffset": 400,
+        "drmCount": 1,
+        "drmSize": 64
+      },
+      "error": null,
+      "checkTime": "2025-07-16T02:39:27.508Z"
+    },
+    {
+      "fileName": "invalid.epub",
+      "filePath": "D:\\WorkRepos\\epub-drm-check\\test-files\\invalid.epub",
+      "fileSize": 29,
+      "fileSizeFormatted": "29 B",
+      "isDRMProtected": true,
+      "drmType": "Unsupported or corrupted file format",
+      "details": {
+        "fileFormat": "unknown",
+        "reason": "File format 'unknown' is not supported or file is corrupted"
+      },
+      "error": null,
+      "checkTime": "2025-07-16T02:39:27.508Z"
+    },
+    {
+      "fileName": "valid-book.azw3",
+      "filePath": "D:\\WorkRepos\\epub-drm-check\\test-files\\valid-book.azw3",
+      "fileSize": 1024,
+      "fileSizeFormatted": "1 KB",
+      "isDRMProtected": false,
+      "drmType": null,
+      "details": {
+        "fileFormat": "mobi"
+      },
+      "error": null,
+      "checkTime": "2025-07-16T02:39:27.508Z"
+    },
+    {
+      "fileName": "valid-book.epub",
+      "filePath": "D:\\WorkRepos\\epub-drm-check\\test-files\\valid-book.epub",
+      "fileSize": 1099,
+      "fileSizeFormatted": "1.07 KB",
+      "isDRMProtected": false,
+      "drmType": null,
+      "details": {
+        "fileFormat": "epub"
+      },
+      "error": null,
+      "checkTime": "2025-07-16T02:39:27.508Z"
+    },
+    {
+      "fileName": "valid-book.mobi",
+      "filePath": "D:\\WorkRepos\\epub-drm-check\\test-files\\valid-book.mobi",
+      "fileSize": 1024,
+      "fileSizeFormatted": "1 KB",
+      "isDRMProtected": false,
+      "drmType": null,
+      "details": {
+        "fileFormat": "mobi"
+      },
+      "error": null,
+      "checkTime": "2025-07-16T02:39:27.508Z"
+    }
+  ]
+}

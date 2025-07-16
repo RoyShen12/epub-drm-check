@@ -1,6 +1,6 @@
 const fs = require('fs').promises;
 const AdmZip = require('adm-zip');
-const { isValidZip } = require('./utils');
+const { isValidZip, detectFileFormat, readMobiDRMInfo, parseEXTHRecords } = require('./utils');
 
 class DRMDetector {
   constructor() {
@@ -15,6 +15,34 @@ class DRMDetector {
     };
 
     try {
+      // Detect file format first
+      const fileFormat = await detectFileFormat(filePath);
+      result.details.fileFormat = fileFormat;
+
+      switch (fileFormat) {
+        case 'epub':
+          return await this.checkEPUBDRM(filePath, result);
+        case 'mobi':
+        case 'azw':
+        case 'azw3':
+          return await this.checkMOBIDRM(filePath, result);
+        default:
+          result.isDRMProtected = true;
+          result.drmType = 'Unsupported or corrupted file format';
+          result.details.reason = `File format '${fileFormat}' is not supported or file is corrupted`;
+          return result;
+      }
+
+    } catch (error) {
+      result.isDRMProtected = true;
+      result.drmType = 'File access error';
+      result.details.error = error.message;
+      return result;
+    }
+  }
+
+  async checkEPUBDRM(filePath, result) {
+    try {
       // First, check if the file is a valid ZIP
       const isValidZipFile = await isValidZip(filePath);
       if (!isValidZipFile) {
@@ -27,28 +55,72 @@ class DRMDetector {
       // Try to open as ZIP and check contents
       const zip = new AdmZip(filePath);
       const entries = zip.getEntries();
-      
+
       // Check for encryption indicators
       const drmCheck = this.analyzeZipContents(entries, zip);
       if (drmCheck.isDRMProtected) {
         result.isDRMProtected = true;
         result.drmType = drmCheck.drmType;
-        result.details = drmCheck.details;
+        result.details = { ...result.details, ...drmCheck.details };
       }
 
     } catch (error) {
       // If we can't open the file as ZIP, it might be DRM protected
-      if (error.message.includes('invalid signature') || 
+      if (error.message.includes('invalid signature') ||
           error.message.includes('not a zip file') ||
           error.message.includes('encrypted') ||
           error.message.includes('invalid central directory') ||
           error.message.includes('malformed')) {
         result.isDRMProtected = true;
-        result.drmType = 'Encrypted or corrupted';
+        result.drmType = 'Encrypted or corrupted EPUB';
         result.details.error = error.message;
       } else {
         throw error; // Re-throw unexpected errors
       }
+    }
+
+    return result;
+  }
+
+  async checkMOBIDRM(filePath, result) {
+    try {
+      // Read MOBI DRM information
+      const mobiInfo = await readMobiDRMInfo(filePath);
+
+      if (mobiInfo.error) {
+        result.isDRMProtected = true;
+        result.drmType = 'Invalid MOBI format';
+        result.details.reason = mobiInfo.error;
+        return result;
+      }
+
+      // Check DRM indicators
+      const hasDRM = this.analyzeMobiDRM(mobiInfo);
+      if (hasDRM.isDRMProtected) {
+        result.isDRMProtected = true;
+        result.drmType = hasDRM.drmType;
+        result.details = { ...result.details, ...hasDRM.details };
+      }
+
+      // Check EXTH records for additional DRM info
+      if (mobiInfo.hasEXTH) {
+        const exthOffset = mobiInfo.firstRecordOffset + mobiInfo.mobiHeaderLength + 16;
+        const exthInfo = await parseEXTHRecords(filePath, exthOffset);
+
+        if (exthInfo.records) {
+          const exthDRM = this.analyzeEXTHRecords(exthInfo.records);
+          if (exthDRM.isDRMProtected) {
+            result.isDRMProtected = true;
+            result.drmType = exthDRM.drmType;
+            result.details = { ...result.details, ...exthDRM.details };
+          }
+        }
+      }
+
+    } catch (error) {
+      result.isDRMProtected = true;
+      result.drmType = 'MOBI/AZW access error';
+      result.details.error = error.message;
     }
 
     return result;
@@ -62,10 +134,10 @@ class DRMDetector {
     };
 
     // Check for encryption.xml in META-INF
-    const encryptionXml = entries.find(entry => 
+    const encryptionXml = entries.find(entry =>
       entry.entryName === 'META-INF/encryption.xml'
     );
-    
+
     if (encryptionXml) {
       result.isDRMProtected = true;
       result.drmType = 'Adobe DRM (encryption.xml found)';
@@ -74,10 +146,10 @@ class DRMDetector {
     }
 
     // Check for rights.xml (Adobe DRM)
-    const rightsXml = entries.find(entry => 
+    const rightsXml = entries.find(entry =>
       entry.entryName === 'META-INF/rights.xml'
     );
-    
+
     if (rightsXml) {
       result.isDRMProtected = true;
       result.drmType = 'Adobe DRM (rights.xml found)';
@@ -88,8 +160,8 @@ class DRMDetector {
     // Check for suspicious file extensions or patterns
     const suspiciousFiles = entries.filter(entry => {
       const fileName = entry.entryName.toLowerCase();
-      return fileName.includes('.acsm') || 
-             fileName.includes('drm') || 
+      return fileName.includes('.acsm') ||
+             fileName.includes('drm') ||
              fileName.includes('license') ||
              fileName.endsWith('.epub.acsm');
     });
@@ -102,10 +174,10 @@ class DRMDetector {
     }
 
     // Check if container.xml exists
-    const containerXml = entries.find(entry => 
+    const containerXml = entries.find(entry =>
       entry.entryName === 'META-INF/container.xml'
     );
-    
+
     if (!containerXml) {
       result.isDRMProtected = true;
       result.drmType = 'Missing container.xml';
@@ -116,7 +188,7 @@ class DRMDetector {
     // Try to read container.xml
     try {
       const containerContent = zip.readAsText(containerXml);
-      
+
       if (!containerContent || containerContent.length === 0) {
         result.isDRMProtected = true;
         result.drmType = 'Empty container.xml';
@@ -144,7 +216,7 @@ class DRMDetector {
 
       const opfPath = opfMatch[1];
       const opfEntry = entries.find(entry => entry.entryName === opfPath);
-      
+
       if (!opfEntry) {
         result.isDRMProtected = true;
         result.drmType = 'Missing OPF file';
@@ -156,7 +228,7 @@ class DRMDetector {
       result.details.containerValid = true;
       result.details.opfPath = opfPath;
       result.details.opfExists = true;
-      
+
       return result; // isDRMProtected remains false
 
     } catch (error) {
@@ -165,6 +237,91 @@ class DRMDetector {
       result.details.reason = `Cannot read container.xml: ${error.message}`;
       return result;
     }
+  }
+
+  analyzeMobiDRM(mobiInfo) {
+    const result = {
+      isDRMProtected: false,
+      drmType: null,
+      details: {}
+    };
+
+    // Check DRM flags and offsets
+    if (mobiInfo.drmOffset && mobiInfo.drmOffset !== 0xFFFFFFFF) {
+      result.isDRMProtected = true;
+      result.drmType = 'Amazon DRM (DRM offset present)';
+      result.details.drmOffset = mobiInfo.drmOffset;
+      result.details.drmCount = mobiInfo.drmCount;
+      result.details.drmSize = mobiInfo.drmSize;
+      return result;
+    }
+
+    if (mobiInfo.drmFlags && mobiInfo.drmFlags !== 0) {
+      result.isDRMProtected = true;
+      result.drmType = 'Amazon DRM (DRM flags set)';
+      result.details.drmFlags = mobiInfo.drmFlags;
+      return result;
+    }
+
+    // Check for encryption in record count pattern
+    if (mobiInfo.numRecords > 1) {
+      // If there are many records but no clear content structure,
+      // it might indicate encryption (this is a heuristic)
+      result.details.numRecords = mobiInfo.numRecords;
+    }
+
+    return result;
+  }
+
+  analyzeEXTHRecords(records) {
+    const result = {
+      isDRMProtected: false,
+      drmType: null,
+      details: {}
+    };
+
+    // Known EXTH record types that indicate DRM
+    const drmRecordTypes = {
+      401: 'DRM Server ID',
+      402: 'DRM Commerce ID',
+      403: 'DRM eBookie ID',
+      404: 'DRM User ID',
+      405: 'DRM PID',
+      406: 'DRM User Name',
+      407: 'DRM Server Token',
+      501: 'Personal DRM Key'
+    };
+
+    const foundDRMRecords = [];
+
+    for (const [recordType, recordData] of Object.entries(records)) {
+      const type = parseInt(recordType);
+
+      if (drmRecordTypes[type]) {
+        foundDRMRecords.push({
+          type: type,
+          name: drmRecordTypes[type],
+          size: recordData.length
+        });
+      }
+
+      // Check for Amazon-specific DRM indicators
+      if (type >= 400 && type <= 450) {
+        foundDRMRecords.push({
+          type: type,
+          name: 'Amazon DRM Record',
+          size: recordData.length
+        });
+      }
+    }
+
+    if (foundDRMRecords.length > 0) {
+      result.isDRMProtected = true;
+      result.drmType = 'Amazon DRM (EXTH records)';
+      result.details.drmRecords = foundDRMRecords;
+    }
+
+    return result;
   }
 }
 

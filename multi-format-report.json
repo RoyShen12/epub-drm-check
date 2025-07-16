@@ -1,0 +1,69 @@
+{
+  "scanDate": "2025-07-16T02:20:02.313Z",
+  "summary": {
+    "totalFiles": 4,
+    "drmProtected": 2,
+    "readable": 2,
+    "errors": 0
+  },
+  "files": [
+    {
+      "fileName": "drm-protected.azw3",
+      "filePath": "D:\\WorkRepos\\epub-drm-check\\test-files\\drm-protected.azw3",
+      "fileSize": 1024,
+      "fileSizeFormatted": "1 KB",
+      "isDRMProtected": true,
+      "drmType": "Amazon DRM (DRM offset present)",
+      "details": {
+        "fileFormat": "mobi",
+        "drmOffset": 400,
+        "drmCount": 1,
+        "drmSize": 64
+      },
+      "error": null,
+      "checkTime": "2025-07-16T02:20:02.310Z"
+    },
+    {
+      "fileName": "drm-protected.mobi",
+      "filePath": "D:\\WorkRepos\\epub-drm-check\\test-files\\drm-protected.mobi",
+      "fileSize": 1024,
+      "fileSizeFormatted": "1 KB",
+      "isDRMProtected": true,
+      "drmType": "Amazon DRM (DRM offset present)",
+      "details": {
+        "fileFormat": "mobi",
+        "drmOffset": 400,
+        "drmCount": 1,
+        "drmSize": 64
+      },
+      "error": null,
+      "checkTime": "2025-07-16T02:20:02.311Z"
+    },
+    {
+      "fileName": "valid-book.azw3",
+      "filePath": "D:\\WorkRepos\\epub-drm-check\\test-files\\valid-book.azw3",
+      "fileSize": 1024,
+      "fileSizeFormatted": "1 KB",
+      "isDRMProtected": false,
+      "drmType": null,
+      "details": {
+        "fileFormat": "mobi"
+      },
+      "error": null,
+      "checkTime": "2025-07-16T02:20:02.311Z"
+    },
+    {
+      "fileName": "valid-book.mobi",
+      "filePath": "D:\\WorkRepos\\epub-drm-check\\test-files\\valid-book.mobi",
+      "fileSize": 1024,
+      "fileSizeFormatted": "1 KB",
+      "isDRMProtected": false,
+      "drmType": null,
+      "details": {
+        "fileFormat": "mobi"
+      },
+      "error": null,
+      "checkTime": "2025-07-16T02:20:02.311Z"
+    }
+  ]
+}

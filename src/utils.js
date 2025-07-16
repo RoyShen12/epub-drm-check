@@ -172,6 +172,197 @@ function isValidXML(xmlString) {
   }
 }
 
+/**
+ * Check if a file is a valid MOBI/AZW file by reading its header
+ * @param {string} filePath - Path to the file to check
+ * @returns {Promise<{isValid: boolean, format: string, version?: string}>}
+ */
+async function checkMobiFormat(filePath) {
+  try {
+    const buffer = Buffer.alloc(232); // Read enough for MOBI header
+    const fileHandle = await fs.open(filePath, 'r');
+
+    try {
+      const { bytesRead } = await fileHandle.read(buffer, 0, 232, 0);
+
+      if (bytesRead < 78) {
+        return { isValid: false, format: 'unknown' };
+      }
+
+      // Check PalmDOC header
+      const palmDocIdentifier = buffer.toString('ascii', 60, 68);
+
+      if (palmDocIdentifier === 'BOOKMOBI') {
+        // Check MOBI version
+        const mobiHeaderLength = buffer.readUInt32BE(20);
+        return {
+          isValid: true,
+          format: 'mobi',
+          headerLength: mobiHeaderLength
+        };
+      } else if (palmDocIdentifier === 'TPZ3TPZ3') {
+        return {
+          isValid: true,
+          format: 'azw3'
+        };
+      } else {
+        // Check for other AZW variants
+        const identifier = buffer.toString('ascii', 60, 64);
+        if (identifier === 'BOOK') {
+          return {
+            isValid: true,
+            format: 'azw'
+          };
+        }
+      }
+
+      return { isValid: false, format: 'unknown' };
+
+    } finally {
+      await fileHandle.close();
+    }
+  } catch (error) {
+    return { isValid: false, format: 'unknown', error: error.message };
+  }
+}
+
+/**
+ * Read MOBI/AZW DRM information from file header
+ * @param {string} filePath - Path to the MOBI/AZW file
+ * @returns {Promise<Object>} - DRM information
+ */
+async function readMobiDRMInfo(filePath) {
+  try {
+    const buffer = Buffer.alloc(1024); // Read first 1KB for headers
+    const fileHandle = await fs.open(filePath, 'r');
+
+    try {
+      const { bytesRead } = await fileHandle.read(buffer, 0, 1024, 0);
+
+      if (bytesRead < 232) {
+        return { error: 'File too small to be valid MOBI' };
+      }
+
+      // Parse PalmDOC header
+      const numRecords = buffer.readUInt16BE(76);
+      const firstRecordOffset = buffer.readUInt32BE(78);
+
+      // Read MOBI header from first record
+      const mobiBuffer = Buffer.alloc(232);
+      const { bytesRead: mobiBytes } = await fileHandle.read(mobiBuffer, 0, 232, firstRecordOffset);
+
+      if (mobiBytes < 232) {
+        return { error: 'Cannot read MOBI header' };
+      }
+
+      // Check MOBI signature
+      const mobiSignature = mobiBuffer.toString('ascii', 16, 20);
+      if (mobiSignature !== 'MOBI') {
+        return { error: 'Invalid MOBI signature' };
+      }
+
+      // Read DRM-related fields
+      const drmOffset = mobiBuffer.readUInt32BE(168); // DRM offset
+      const drmCount = mobiBuffer.readUInt32BE(172);  // DRM count
+      const drmSize = mobiBuffer.readUInt32BE(176);   // DRM size
+      const drmFlags = mobiBuffer.readUInt32BE(180);  // DRM flags
+
+      // Check for EXTH header (contains additional DRM info)
+      const exthFlag = mobiBuffer.readUInt32BE(128);
+      const hasEXTH = (exthFlag & 0x40) !== 0;
+
+      return {
+        numRecords,
+        firstRecordOffset,
+        drmOffset,
+        drmCount,
+        drmSize,
+        drmFlags,
+        hasEXTH,
+        mobiHeaderLength: mobiBuffer.readUInt32BE(20)
+      };
+
+    } finally {
+      await fileHandle.close();
+    }
+  } catch (error) {
+    return { error: error.message };
+  }
+}
+
+/**
+ * Parse EXTH records for DRM information
+ * @param {string} filePath - Path to the file
+ * @param {number} exthOffset - Offset to EXTH header
+ * @returns {Promise<Object>} - EXTH DRM information
+ */
+async function parseEXTHRecords(filePath, exthOffset) {
+  try {
+    const fileHandle = await fs.open(filePath, 'r');
+
+    try {
+      const exthBuffer = Buffer.alloc(12); // EXTH header is 12 bytes
+      await fileHandle.read(exthBuffer, 0, 12, exthOffset);
+
+      const exthSignature = exthBuffer.toString('ascii', 0, 4);
+      if (exthSignature !== 'EXTH') {
+        return { error: 'Invalid EXTH signature' };
+      }
+
+      const exthLength = exthBuffer.readUInt32BE(4);
+      const recordCount = exthBuffer.readUInt32BE(8);
+
+      // Read all EXTH records
+      const recordsBuffer = Buffer.alloc(exthLength - 12);
+      await fileHandle.read(recordsBuffer, 0, exthLength - 12, exthOffset + 12);
+
+      const records = {};
+      let offset = 0;
+
+      for (let i = 0; i < recordCount && offset < recordsBuffer.length - 8; i++) {
+        const recordType = recordsBuffer.readUInt32BE(offset);
+        const recordLength = recordsBuffer.readUInt32BE(offset + 4);
+
+        if (recordLength > 8 && offset + recordLength <= recordsBuffer.length) {
+          const recordData = recordsBuffer.slice(offset + 8, offset + recordLength);
+          records[recordType] = recordData;
+        }
+
+        offset += recordLength;
+      }
+
+      return { records, recordCount };
+
+    } finally {
+      await fileHandle.close();
+    }
+  } catch (error) {
+    return { error: error.message };
+  }
+}
+
+/**
+ * Detect file format based on file extension and magic bytes
+ * @param {string} filePath - Path to the file
+ * @returns {Promise<string>} - File format (epub, mobi, azw3, azw, unknown)
+ */
+async function detectFileFormat(filePath) {
+  const ext = require('path').extname(filePath).toLowerCase();
+
+  // Quick check based on extension
+  if (ext === '.epub') {
+    const zipValid = await isValidZip(filePath);
+    return zipValid ? 'epub' : 'unknown';
+  }
+
+  if (ext === '.mobi' || ext === '.azw3' || ext === '.azw') {
+    const mobiInfo = await checkMobiFormat(filePath);
+    return mobiInfo.isValid ? mobiInfo.format : 'unknown';
+  }
+
+  return 'unknown';
+}
+
 module.exports = {
   isValidZip,
   readZipEntry,
@@ -179,5 +370,9 @@ module.exports = {
   sanitizeFilename,
   getRelativePath,
   sleep,
-  isValidXML
+  isValidXML,
+  checkMobiFormat,
+  readMobiDRMInfo,
+  parseEXTHRecords,
+  detectFileFormat
 };

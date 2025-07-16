@@ -11,11 +11,11 @@ const program = new Command();
 
 program
   .name('epub-drm-check')
-  .description('CLI tool to detect DRM-protected EPUB files')
-  .version('1.0.0');
+  .description('CLI tool to detect DRM-protected EPUB, MOBI, and AZW3 files')
+  .version('1.2.0');
 
 program
-  .argument('<directory>', 'Directory to scan for EPUB files')
+  .argument('<directory>', 'Directory to scan for eBook files (EPUB, MOBI, AZW3)')
   .option('-r, --recursive', 'Scan subdirectories recursively', true)
   .option('-o, --output <file>', 'Output report to file (optional)')
   .option('-f, --format <type>', 'Output format (json|csv|txt)', 'txt')
@@ -41,7 +41,7 @@ program
         verbose: options.verbose
       });
 
-      // Scan for EPUB files and check for DRM
+      // Scan for eBook files and check for DRM
       const results = await scanner.scan(dirPath);
 
       // Generate report
@@ -59,7 +59,7 @@ program
       const errors = results.filter(r => r.error).length;
 
       console.log(chalk.yellow('\n📊 Summary:'));
-      console.log(`  Total EPUB files: ${total}`);
+      console.log(`  Total eBook files: ${total}`);
       console.log(`  DRM-protected: ${chalk.red(drmProtected)}`);
       console.log(`  Readable: ${chalk.green(total - drmProtected - errors)}`);
       if (errors > 0) {

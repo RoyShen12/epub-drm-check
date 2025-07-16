@@ -137,7 +137,7 @@ class Reporter {
 
   generateTXT(results) {
     const lines = [];
-    lines.push('EPUB DRM Check Report');
+    lines.push('eBook DRM Check Report');
     lines.push('='.repeat(50));
     lines.push(`Generated: ${new Date().toLocaleString()}`);
     lines.push('');
@@ -149,7 +149,7 @@ class Reporter {
     const errors = results.filter(r => r.error).length;
 
     lines.push('SUMMARY:');
-    lines.push(`  Total EPUB files: ${totalFiles}`);
+    lines.push(`  Total eBook files: ${totalFiles}`);
     lines.push(`  DRM-protected: ${drmProtected}`);
     lines.push(`  Readable: ${readable}`);
     lines.push(`  Errors: ${errors}`);

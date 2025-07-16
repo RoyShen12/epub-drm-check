@@ -14,18 +14,17 @@ class Scanner {
     this.progressBar = null;
   }
 
-  async scan(directory) {
-    console.log(chalk.blue('🔍 Finding EPUB files...'));
+  async scan(directory) {    console.log(chalk.blue('🔍 Finding eBook files...'));
 
-    // Find all EPUB files
-    const epubFiles = await this.findEpubFiles(directory);
+    // Find all supported eBook files
+    const eBookFiles = await this.findEBookFiles(directory);
 
-    if (epubFiles.length === 0) {
-      console.log(chalk.yellow('No EPUB files found in the specified directory.'));
+    if (eBookFiles.length === 0) {
+      console.log(chalk.yellow('No supported eBook files found in the specified directory.'));
       return [];
     }
 
-    console.log(chalk.blue(`📚 Found ${epubFiles.length} EPUB files`));
+    console.log(chalk.blue(`📚 Found ${eBookFiles.length} eBook files`));
 
     // Initialize progress bar
     this.progressBar = new cliProgress.SingleBar({
@@ -37,14 +36,14 @@ class Scanner {
       stopOnComplete: true
     });
 
-    this.progressBar.start(epubFiles.length, 0, { filename: 'Starting...' });
+    this.progressBar.start(eBookFiles.length, 0, { filename: 'Starting...' });
 
     // Process files with concurrency limit
     const limit = pLimit(this.concurrency);
     const results = [];
     let completed = 0;
 
-    const promises = epubFiles.map(filePath =>
+    const promises = eBookFiles.map(filePath =>
       limit(async () => {
         const result = await this.checkFile(filePath);
         completed++;
@@ -60,14 +59,13 @@ class Scanner {
 
     return allResults;
   }
-
-  async findEpubFiles(directory) {
-    const epubFiles = [];
-    await this.findEpubFilesRecursive(directory, epubFiles);
-    return epubFiles;
+  async findEBookFiles(directory) {
+    const eBookFiles = [];
+    await this.findEBookFilesRecursive(directory, eBookFiles);
+    return eBookFiles;
   }
 
-  async findEpubFilesRecursive(directory, epubFiles) {
+  async findEBookFilesRecursive(directory, eBookFiles) {
     try {
       const entries = await fs.readdir(directory, { withFileTypes: true });
 
@@ -76,10 +74,13 @@ class Scanner {
 
         if (entry.isDirectory()) {
           if (this.recursive) {
-            await this.findEpubFilesRecursive(fullPath, epubFiles);
+            await this.findEBookFilesRecursive(fullPath, eBookFiles);
           }
-        } else if (entry.isFile() && path.extname(entry.name).toLowerCase() === '.epub') {
-          epubFiles.push(fullPath);
+        } else if (entry.isFile()) {
+          const ext = path.extname(entry.name).toLowerCase();
+          if (ext === '.epub' || ext === '.mobi' || ext === '.azw3' || ext === '.azw') {
+            eBookFiles.push(fullPath);
+          }
         }
       }
     } catch (error) {
@@ -93,6 +94,7 @@ class Scanner {
     const result = {
       filePath,
       fileName: path.basename(filePath),
+      fileType: path.extname(filePath).toLowerCase().substring(1), // Remove the dot
       fileSize: 0,
       isDRMProtected: false,
       drmType: null,

@@ -1,0 +1,36 @@
+EPUB DRM Check Report
+==================================================
+Generated: 2025/7/16 10:41:16
+
+SUMMARY:
+  Total EPUB files: 7
+  DRM-protected: 4
+  Readable: 3
+  Errors: 0
+
+DRM-PROTECTED FILES:
+------------------------------
+1. drm-protected.azw3
+   Path: D:\WorkRepos\epub-drm-check\test-files\drm-protected.azw3
+   Size: 1 KB
+   DRM Type: Amazon DRM (DRM offset present)
+
+2. drm-protected.epub
+   Path: D:\WorkRepos\epub-drm-check\test-files\drm-protected.epub
+   Size: 874 B
+   DRM Type: Adobe DRM (encryption.xml found)
+
+3. drm-protected.mobi
+   Path: D:\WorkRepos\epub-drm-check\test-files\drm-protected.mobi
+   Size: 1 KB
+   DRM Type: Amazon DRM (DRM offset present)
+
+4. invalid.epub
+   Path: D:\WorkRepos\epub-drm-check\test-files\invalid.epub
+   Size: 29 B
+   DRM Type: Unsupported or corrupted file format
+   Reason: File format 'unknown' is not supported or file is corrupted
+
+READABLE FILES:
+------------------------------
+3 files are readable and not DRM-protected.

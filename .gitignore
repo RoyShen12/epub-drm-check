@@ -4,6 +4,19 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
+# Test coverage
+coverage/
+*.lcov
+
+# Jest output
+jest-results.json
+
+# Example output files
+results.json
+results.csv
+my-drm-report.txt
+*.drm-report.*
+
 # Runtime data
 pids
 *.pid
